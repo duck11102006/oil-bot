@@ -1,4 +1,4 @@
-import discord
+fimport discord
 from discord import app_commands
 from discord.ext import commands
 import json
@@ -125,8 +125,7 @@ class DrillSelect(discord.ui.Select):
         embed.add_field(name="Cost", value=f"```\n$\n{format_value(total_cost)}\n```", inline=True)
         embed.add_field(name="\u200b", value="\u200b", inline=True)
         embed.add_field(name="Petrol/s", value=f"```\n{self.profile_petrol}\n```", inline=True)
-        embed.add_field(name="Current EPS", value=f"```\n$\n{format_value(self.eps)}/s\n
-```", inline=True)
+        embed.add_field(name="Current EPS", value=f"```\n$\n{format_value(self.eps)}/s\n```", inline=True)
         embed.add_field(name="⏳ Time Needed", value=f"```ansi\n\u001b[1;33m{format_time(time_needed)}\u001b[0m\n```", inline=False)
         embed.set_footer(text=f"Requested by {self.user_name}")
         await interaction.response.edit_message(embed=embed, view=None)
