@@ -3,8 +3,36 @@ from discord import app_commands
 from discord.ext import commands
 import json
 import os
+import aiohttp
+import certifi
+import ssl
+from flask import Flask
+import threading
+from discord.http import Route
 
+# --- RENDER COMPATIBILITY LAYER ---
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run():
+    # Render yêu cầu bind vào cổng được cấp phát qua biến môi trường PORT
+    port = int(os.environ.get("PORT", 7860))
+    app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    t = threading.Thread(target=run)
+    t.daemon = True
+    t.start()
+
+# Khởi chạy Web Server để Render không tắt Bot
+keep_alive()
+
+# --- BOT SETUP ---
 intents = discord.Intents.default()
+intents.message_content = True # Đảm bảo đã bật Message Content Intent
 bot = commands.Bot(command_prefix=".", intents=intents)
 
 # --- 1. DATABASE MANAGEMENT ---
@@ -30,8 +58,8 @@ def save_profile(user_id, petrol_s, energy_s):
     }
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(profiles, f, indent=4, ensure_ascii=False)
-        f.flush() # Ép buộc ghi dữ liệu
-        os.fsync(f.fileno()) # Đảm bảo file được lưu trên ổ cứng
+        f.flush() 
+        os.fsync(f.fileno())
 
 # --- 2. HELPER FUNCTIONS ---
 
@@ -262,4 +290,24 @@ async def target_cash(interaction: discord.Interaction, target: str, sell_price:
     embed.add_field(name="Wait Time", value=f"```ansi\n\u001b[1;33m{format_time(time_needed)}\u001b[0m\n```", inline=True)
     await interaction.followup.send(embed=embed)
 
-bot.run("MTUwNjUwMDIwOTQ5OTE3NzAyMA.GPMQKr.xkQMlAY3sadT_EiT93KHl-39hD0Nsd_o2Arx-g")
+async def main():
+    # Cấu hình SSL an toàn để tránh lỗi ConnectionReset
+    ssl_context = ssl.create_default_context(cafile=certifi.where())
+    connector = aiohttp.TCPConnector(ssl=ssl_context)
+    
+    async with aiohttp.ClientSession(connector=connector) as session:
+        bot.http.connector = connector
+        async with bot:
+            token = os.getenv('DISCORD_TOKEN')
+            if not token:
+                print("❌ ERROR: DISCORD_TOKEN not found!")
+                return
+            print("🚀 Bot starting...")
+            await bot.start(token)
+
+if __name__ == "__main__":
+    import asyncio
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        pass
