@@ -156,13 +156,11 @@ class GoldenDrillSelect(discord.ui.Select):
         embed.add_field(name="Golden Cost", value=f"```\n$\n{format_value(golden_total_cost)}\n```", inline=True)
         embed.add_field(name="\u200b", value="\u200b", inline=True)
         embed.add_field(name="Petrol/s", value=f"```\n{self.profile_petrol}\n```", inline=True)
-        embed.add_field(name="Adjusted EPS", value=f"```\n$\n{format_value(self.eps)}/s\n
-```", inline=True)
+        embed.add_field(name="Adjusted EPS", value=f"```\n$\n{format_value(self.eps)}/s\n```", inline=True)
         embed.add_field(name="Energy Eff.", value=f"```\n{int(self.energy_pct*100)}%\n```", inline=True)
         details = f"Money wait: {format_time(t_money)}\nEnergy wait: {format_time(t_energy)}"
         embed.add_field(name="📊 Calculation Details", value=f"```\n{details}\n```", inline=False)
-        embed.add_field(name="⏳ Total Time Needed", value=f"```ansi\n\u001b[1;33m{format_time(final_wait)}\u001b[0m\n
-```", inline=False)
+        embed.add_field(name="⏳ Total Time Needed", value=f"```ansi\n\u001b[1;33m{format_time(final_wait)}\u001b[0m\n```", inline=False)
         embed.set_footer(text=f"Requested by {self.user_name}")
         await interaction.response.edit_message(embed=embed, view=None)
 
@@ -237,8 +235,7 @@ async def sellgas(interaction: discord.Interaction, petrol: str, sell_price: flo
         embed.add_field(name="💵 Price", value=f"```\n$\n{sell_price:,.2f}\n```", inline=True)
         embed.add_field(name="🚀 Boost", value=f"```\n{money_boost:.1f}%\n(x{boost_multi:.2f})\n```", inline=True)
         res_text = f"+ $ {format_value(total)}"
-        embed.add_field(name="💰 Earnings", value=f"```ansi\n\u001b[1;32m{res_text}\u001b[0m\n
-```", inline=False)
+        embed.add_field(name="💰 Earnings", value=f"```ansi\n\u001b[1;32m{res_text}\u001b[0m\n```", inline=False)
         embed.set_footer(text=f"Requested by {interaction.user.name}", icon_url=interaction.user.display_avatar.url)
         await interaction.followup.send(embed=embed)
     except Exception as e:
@@ -262,11 +259,9 @@ async def calculate(interaction: discord.Interaction, sell_price: float, money_b
     embed.add_field(name="⛽ Petrol/s", value=f"```\n{p_str}\n```", inline=True)
     embed.add_field(name="💵 Price", value=f"```\n$ {sell_price:,.2f}\n```", inline=True)
     embed.add_field(name="🚀 Boost", value=f"```\n{money_boost}% \n(x{boost_multi:.2f})\n```", inline=True)
-    embed.add_field(name="⏱️ Per Second", value=f"```\n$ {format_value(eps)}\n
-```", inline=True)
+    embed.add_field(name="⏱️ Per Second", value=f"```\n$ {format_value(eps)}\n```", inline=True)
     embed.add_field(name="🕒 Per Minute", value=f"```\n$ {format_value(eps*60)}\n```", inline=True)
-    embed.add_field(name="📈 Per Hour", value=f"```\n$ {format_value(eps*3600)}\n
-```", inline=True)
+    embed.add_field(name="📈 Per Hour", value=f"```\n$ {format_value(eps*3600)}\n```", inline=True)
     total_money = eps * 3600 * playtime_hours
     total_petrol = p_val * 3600 * playtime_hours
     summary_text = f"+ $ {format_value(total_money)}\n+ {format_value(total_petrol)} petrol"
@@ -288,8 +283,7 @@ async def target_cash(interaction: discord.Interaction, target: str, sell_price:
     eps = parse_value(data["petrol_s"]) * sell_price * (money_boost / 100)
     time_needed = target_val / eps if eps > 0 else float('inf')
     embed = discord.Embed(title="🎯 Target Cash Calculator", color=0x2ecc71)
-    embed.add_field(name="Target", value=f"```\n$ {target.upper()}\n
-```", inline=True)
+    embed.add_field(name="Target", value=f"```\n$ {target.upper()}\n```", inline=True)
     embed.add_field(name="Wait Time", value=f"```ansi\n\u001b[1;33m{format_time(time_needed)}\u001b[0m\n```", inline=True)
     await interaction.followup.send(embed=embed)
 
