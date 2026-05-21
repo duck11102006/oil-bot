@@ -9,6 +9,7 @@ import ssl
 from flask import Flask
 import threading
 from discord.http import Route
+import pymongo # Thêm thư viện này ở đầu file
 
 # --- RENDER COMPATIBILITY LAYER ---
 app = Flask('')
@@ -35,31 +36,31 @@ intents = discord.Intents.default()
 intents.message_content = True # Đảm bảo đã bật Message Content Intent
 bot = commands.Bot(command_prefix=".", intents=intents)
 
-# --- 1. DATABASE MANAGEMENT ---
-DATA_FILE = "profiles.json"
+# --- 1. MONGODB SETUP ---
+# Lấy link kết nối từ Environment Variable của Render
+MONGO_URL = os.getenv("MONGO_URL")
+cluster = pymongo.MongoClient(MONGO_URL)
+db = cluster["OilBotDB"]
+collection = db["profiles"]
 
 def load_profiles():
-    """Tải dữ liệu từ file JSON. Nếu file lỗi hoặc không có, trả về dict trống."""
-    if not os.path.exists(DATA_FILE):
-        return {}
-    try:
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data if isinstance(data, dict) else {}
-    except (json.JSONDecodeError, Exception):
-        return {}
+    """Tải tất cả profiles từ MongoDB (không dùng file JSON nữa)."""
+    return collection
+
+def get_user_profile(user_id):
+    """Lấy thông tin một người dùng cụ thể."""
+    return collection.find_one({"_id": str(user_id)})
 
 def save_profile(user_id, petrol_s, energy_s):
-    """Lưu dữ liệu và ép buộc ghi xuống đĩa ngay lập tức."""
-    profiles = load_profiles()
-    profiles[str(user_id)] = {
-        "petrol_s": petrol_s.upper(), 
-        "energy_s": energy_s.upper()
-    }
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(profiles, f, indent=4, ensure_ascii=False)
-        f.flush() 
-        os.fsync(f.fileno())
+    """Lưu hoặc cập nhật dữ liệu vào MongoDB."""
+    collection.update_one(
+        {"_id": str(user_id)},
+        {"$set": {
+            "petrol_s": petrol_s.upper(),
+            "energy_s": energy_s.upper()
+        }},
+        upsert=True # Nếu chưa có thì tạo mới, có rồi thì ghi đè
+    )
 
 # --- 2. HELPER FUNCTIONS ---
 
@@ -124,7 +125,8 @@ class DrillSelect(discord.ui.Select):
         embed.add_field(name="Cost", value=f"```\n$\n{format_value(total_cost)}\n```", inline=True)
         embed.add_field(name="\u200b", value="\u200b", inline=True)
         embed.add_field(name="Petrol/s", value=f"```\n{self.profile_petrol}\n```", inline=True)
-        embed.add_field(name="Current EPS", value=f"```\n$\n{format_value(self.eps)}/s\n```", inline=True)
+        embed.add_field(name="Current EPS", value=f"```\n$\n{format_value(self.eps)}/s\n
+```", inline=True)
         embed.add_field(name="⏳ Time Needed", value=f"```ansi\n\u001b[1;33m{format_time(time_needed)}\u001b[0m\n```", inline=False)
         embed.set_footer(text=f"Requested by {self.user_name}")
         await interaction.response.edit_message(embed=embed, view=None)
@@ -155,11 +157,13 @@ class GoldenDrillSelect(discord.ui.Select):
         embed.add_field(name="Golden Cost", value=f"```\n$\n{format_value(golden_total_cost)}\n```", inline=True)
         embed.add_field(name="\u200b", value="\u200b", inline=True)
         embed.add_field(name="Petrol/s", value=f"```\n{self.profile_petrol}\n```", inline=True)
-        embed.add_field(name="Adjusted EPS", value=f"```\n$\n{format_value(self.eps)}/s\n```", inline=True)
+        embed.add_field(name="Adjusted EPS", value=f"```\n$\n{format_value(self.eps)}/s\n
+```", inline=True)
         embed.add_field(name="Energy Eff.", value=f"```\n{int(self.energy_pct*100)}%\n```", inline=True)
         details = f"Money wait: {format_time(t_money)}\nEnergy wait: {format_time(t_energy)}"
         embed.add_field(name="📊 Calculation Details", value=f"```\n{details}\n```", inline=False)
-        embed.add_field(name="⏳ Total Time Needed", value=f"```ansi\n\u001b[1;33m{format_time(final_wait)}\u001b[0m\n```", inline=False)
+        embed.add_field(name="⏳ Total Time Needed", value=f"```ansi\n\u001b[1;33m{format_time(final_wait)}\u001b[0m\n
+```", inline=False)
         embed.set_footer(text=f"Requested by {self.user_name}")
         await interaction.response.edit_message(embed=embed, view=None)
 
@@ -188,8 +192,7 @@ async def profile_set(interaction: discord.Interaction, petrol_s: str, energy_s:
 )
 async def drillcost(interaction: discord.Interaction, sell_price: float, money_boost: float, amount: int = 1):
     await interaction.response.defer(thinking=True)
-    profiles = load_profiles()
-    data = profiles.get(str(interaction.user.id))
+    data = get_user_profile(interaction.user.id)
     if not data: return await interaction.followup.send("❌ Please setup your profile first using `/profile_set`!")
     p_str = data["petrol_s"]
     eps = parse_value(p_str) * sell_price * (money_boost / 100)
@@ -207,8 +210,7 @@ async def golden_drillcost(interaction: discord.Interaction, sell_price: float, 
     await interaction.response.defer(thinking=True)
     energy_map = {10000: 0.15, 19000: 0.40, 24000: 0.75, 28000: 1.0}
     if energy_needed not in energy_map: return await interaction.followup.send("❌ Invalid energy value! Use 10000, 19000, 24000, or 28000.")
-    profiles = load_profiles()
-    data = profiles.get(str(interaction.user.id))
+    data = get_user_profile(interaction.user.id)
     if not data: return await interaction.followup.send("❌ Setup profile first!")
     p_val, e_s_val = parse_value(data["petrol_s"]), parse_value(data["energy_s"])
     if e_s_val <= 0: return await interaction.followup.send("❌ Energy/s in profile must be > 0.")
@@ -236,7 +238,8 @@ async def sellgas(interaction: discord.Interaction, petrol: str, sell_price: flo
         embed.add_field(name="💵 Price", value=f"```\n$\n{sell_price:,.2f}\n```", inline=True)
         embed.add_field(name="🚀 Boost", value=f"```\n{money_boost:.1f}%\n(x{boost_multi:.2f})\n```", inline=True)
         res_text = f"+ $ {format_value(total)}"
-        embed.add_field(name="💰 Earnings", value=f"```ansi\n\u001b[1;32m{res_text}\u001b[0m\n```", inline=False)
+        embed.add_field(name="💰 Earnings", value=f"```ansi\n\u001b[1;32m{res_text}\u001b[0m\n
+```", inline=False)
         embed.set_footer(text=f"Requested by {interaction.user.name}", icon_url=interaction.user.display_avatar.url)
         await interaction.followup.send(embed=embed)
     except Exception as e:
@@ -251,8 +254,7 @@ async def sellgas(interaction: discord.Interaction, petrol: str, sell_price: flo
 )
 async def calculate(interaction: discord.Interaction, sell_price: float, money_boost: float, petrol_s: str = None, playtime_hours: float = 24.0):
     await interaction.response.defer(thinking=True)
-    profiles = load_profiles()
-    user_data = profiles.get(str(interaction.user.id))
+    user_data = get_user_profile(interaction.user.id)
     p_str = petrol_s if petrol_s else (user_data["petrol_s"] if user_data else "0")
     p_val = parse_value(p_str)
     boost_multi = money_boost / 100
@@ -261,9 +263,11 @@ async def calculate(interaction: discord.Interaction, sell_price: float, money_b
     embed.add_field(name="⛽ Petrol/s", value=f"```\n{p_str}\n```", inline=True)
     embed.add_field(name="💵 Price", value=f"```\n$ {sell_price:,.2f}\n```", inline=True)
     embed.add_field(name="🚀 Boost", value=f"```\n{money_boost}% \n(x{boost_multi:.2f})\n```", inline=True)
-    embed.add_field(name="⏱️ Per Second", value=f"```\n$ {format_value(eps)}\n```", inline=True)
+    embed.add_field(name="⏱️ Per Second", value=f"```\n$ {format_value(eps)}\n
+```", inline=True)
     embed.add_field(name="🕒 Per Minute", value=f"```\n$ {format_value(eps*60)}\n```", inline=True)
-    embed.add_field(name="📈 Per Hour", value=f"```\n$ {format_value(eps*3600)}\n```", inline=True)
+    embed.add_field(name="📈 Per Hour", value=f"```\n$ {format_value(eps*3600)}\n
+```", inline=True)
     total_money = eps * 3600 * playtime_hours
     total_petrol = p_val * 3600 * playtime_hours
     summary_text = f"+ $ {format_value(total_money)}\n+ {format_value(total_petrol)} petrol"
@@ -279,14 +283,14 @@ async def calculate(interaction: discord.Interaction, sell_price: float, money_b
 )
 async def target_cash(interaction: discord.Interaction, target: str, sell_price: float, money_boost: float):
     await interaction.response.defer(thinking=True)
-    profiles = load_profiles()
-    data = profiles.get(str(interaction.user.id))
+    data = get_user_profile(interaction.user.id)
     if not data: return await interaction.followup.send("❌ Setup profile first!")
     target_val = parse_value(target)
     eps = parse_value(data["petrol_s"]) * sell_price * (money_boost / 100)
     time_needed = target_val / eps if eps > 0 else float('inf')
     embed = discord.Embed(title="🎯 Target Cash Calculator", color=0x2ecc71)
-    embed.add_field(name="Target", value=f"```\n$ {target.upper()}\n```", inline=True)
+    embed.add_field(name="Target", value=f"```\n$ {target.upper()}\n
+```", inline=True)
     embed.add_field(name="Wait Time", value=f"```ansi\n\u001b[1;33m{format_time(time_needed)}\u001b[0m\n```", inline=True)
     await interaction.followup.send(embed=embed)
 
