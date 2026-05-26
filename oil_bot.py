@@ -96,11 +96,6 @@ def format_time(seconds):
     return " ".join(parts)
 
 DRILL_DATA = [
-    ("Basic Drill", 500), ("Strong Drill", 1800), ("Enhanced Drill", 3600),
-    ("Speed Drill", 7200), ("Reinforced Drill", 12000), ("Industrial Drill", 20000),
-    ("Double Industrial Drill", 30000), ("Turbo Drill", 80000), ("Mega Drill", 140000),
-    ("Mega Emerald Drill", 400000), ("Hell Drill", 1225000), ("Plasma Drill", 4500000),
-    ("Huge Long Drill", 40000000), ("Mega Plasma Drill", 95000000), ("Multi Drill", 280000000),
     ("Lava Drill", 900000000), ("Ice Plasma Drill", 2400000000), ("Crystal Drill", 9000000000),
     ("Diamond Drill", 27500000000), ("Ruby Drill", 85500000000), ("Fusion Drill", 187500000000),
     ("Uranium Drill", 437500000000), ("Radium Drill", 810000000000), ("Palladium Drill", 1250000000000),
