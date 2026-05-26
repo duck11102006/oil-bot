@@ -281,6 +281,59 @@ async def target_cash(interaction: discord.Interaction, target: str, sell_price:
     embed.add_field(name="Target", value=f"```\n$ {target.upper()}\n```", inline=True)
     embed.add_field(name="Wait Time", value=f"```ansi\n\u001b[1;33m{format_time(time_needed)}\u001b[0m\n```", inline=True)
     await interaction.followup.send(embed=embed)
+# --- OIL TARGET (NEW) ---
+@bot.tree.command(name="oil_target", description="Calculate exactly how long you need to wait to produce a specific amount of petrol.")
+@app_commands.describe(
+    target="The amount of petrol you want to reach (e.g., 100M, 5B, 2T)."
+)
+async def oil_target(interaction: discord.Interaction, target: str):
+    # Bước 1: Defer để tránh lỗi Timeout
+    await interaction.response.defer(thinking=True)
+    
+    # Bước 2: Lấy dữ liệu từ MongoDB
+    data = get_user_profile(interaction.user.id)
+    if not data: 
+        return await interaction.followup.send("❌ Setup profile first using `/profile_set`!")
+
+    # Bước 3: Logic tính toán
+    target_val = parse_value(target)
+    if target_val <= 0:
+        return await interaction.followup.send("❌ Invalid target amount! Please use K, M, B, or T.")
+
+    p_str = data["petrol_s"]
+    p_val = parse_value(p_str)
+
+    if p_val <= 0:
+        return await interaction.followup.send("❌ Your production rate (Petrol/s) in profile must be greater than 0.")
+
+    # Thời gian (giây) = Tổng xăng mục tiêu / Xăng mỗi giây
+    time_needed = target_val / p_val
+
+    # Bước 4: Giao diện Embed (Đồng bộ với các lệnh khác)
+    embed = discord.Embed(title="🎯 Petrol Target Calculator", color=0x3498db)
+    embed.set_author(name="Calculation Complete")
+    
+    # Ô Petrol mục tiêu
+    embed.add_field(name="Target Petrol", value=f"```\n{target.upper()}\n```", inline=True)
+    
+    # Ô Petrol/s hiện tại
+    embed.add_field(name="Current Petrol/s", value=f"```\n{p_str}\n```", inline=True)
+    
+    # Kết quả thời gian chờ (ANSI Yellow)
+    time_str = format_time(time_needed)
+    embed.add_field(
+        name="⏳ Time Needed", 
+        value=f"```ansi\n\u001b[1;33m{time_str}\u001b[0m\n```", 
+        inline=False
+    )
+    
+    embed.set_footer(
+        text=f"Requested by {interaction.user.name}", 
+        icon_url=interaction.user.display_avatar.url
+    )
+
+    # Bước 5: Gửi kết quả
+    await interaction.followup.send(embed=embed)
 
 async def main():
     # Cấu hình SSL an toàn để tránh lỗi ConnectionReset
