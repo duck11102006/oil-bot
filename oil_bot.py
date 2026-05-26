@@ -104,7 +104,7 @@ DRILL_DATA = [
     ("Lava Drill", 900000000), ("Ice Plasma Drill", 2400000000), ("Crystal Drill", 9000000000),
     ("Diamond Drill", 27500000000), ("Ruby Drill", 85500000000), ("Fusion Drill", 187500000000),
     ("Uranium Drill", 437500000000), ("Radium Drill", 810000000000), ("Palladium Drill", 1250000000000),
-    ("Thorium Drill", 2100000000000)
+    ("Thorium Drill", 2100000000000) , ("Barium Drill", 3600000000000)
 ]
 
 # --- 4. UI SELECTION CLASSES ---
