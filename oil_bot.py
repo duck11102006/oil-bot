@@ -10,6 +10,7 @@ from flask import Flask
 import threading
 from discord.http import Route
 import pymongo # Thêm thư viện này ở đầu file
+#sdsds
 
 # --- RENDER COMPATIBILITY LAYER ---
 app = Flask('')
